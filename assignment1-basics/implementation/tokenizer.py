@@ -28,7 +28,9 @@ def train_bpe(
                of bytes (<token1>, <token2>), representing that <token1> was merged with
                <token2>. The merges should be ordered by order of creation.
     """
-    # TODO: Read the input file
+    # Read the input file as bytes
+    with open(input_path, "rb") as f:
+        data = f.read()
 
     # TODO: Initialize vocabulary with base byte tokens (0-255)
     vocab: dict[int, bytes] = {}
@@ -37,8 +39,8 @@ def train_bpe(
 
     # TODO: Perform BPE training - iteratively merge most frequent pairs
     merges: list[tuple[bytes, bytes]] = []
-    for i in (0, vocab_size - 256 - len(special_tokens)):
-
+    for i in range(0, vocab_size - 256 - len(special_tokens)):
+        pass
 
     # TODO: Return the final vocabulary and merges list
     return vocab, merges
