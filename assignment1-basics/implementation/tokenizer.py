@@ -32,12 +32,18 @@ def train_bpe(
     with open(input_path, "rb") as f:
         data = f.read()
 
+    # TODO: Split the input file content to different chunks based on special tokens, by using re.split with "|".join(special_tokens).
+
+    # TODO: In each chunk, separately do a regex-based pre-tokenization with r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+
+    # TODO: Merge the pre-tokenization result from different chunks
+
     # TODO: Initialize vocabulary with base byte tokens (0-255)
     vocab: dict[int, bytes] = {}
 
     # TODO: Add special tokens to vocabulary
 
-    # TODO: Perform BPE training - iteratively merge most frequent pairs
+    # TODO: Perform BPE training from pre-tokenization result - iteratively merge most frequent pairs
     merges: list[tuple[bytes, bytes]] = []
     for i in range(0, vocab_size - 256 - len(special_tokens)):
         pass
