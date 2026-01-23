@@ -62,23 +62,23 @@ def train_bpe(
         vocab[256 + i] = token.encode("utf-8")
 
     # TODO 6: Perform BPE training from pre-tokenization result - iteratively merge most frequent pairs
-    # more details here:
-    # 1. the process for each step is: iterate over all pairs from pre-tokenization results -> find the most frequent pair -> add it to vocab, merges and update pre-tokenization result.
-    # 2. we do not consider the scenario where there are no more pairs to merge before we reach the expected `vocab_size`
-    # 3. when two pairs have the same frequency, break tie tie by preferring the lexi greater pair.
+    # Optimized version: build pair_freq once, then incrementally update after each merge
+    # 1. Only pairs adjacent to merge positions change
+    # 2. Compute old_pairs and new_pairs for affected tokens, update pair_freq with the diff
 
-    # Initializa the list to store merges we've encountered.    
+    # TODO 6.1: Build initial pair frequency counts (once, before the loop)
+    pair_freq: dict[tuple[bytes, bytes], int] = {}
+    for token, freq in pre_tokenization.items():
+        for j in range(len(token) - 1):
+            pair = (token[j], token[j + 1])
+            pair_freq[pair] = pair_freq.get(pair, 0) + freq
+
+    # Initialize the list to store merges
     merges: list[tuple[bytes, bytes]] = []
-    # Repeat the merging process.
-    for i in range(0, vocab_size - 256 - len(special_tokens)):
-        pair_freq: dict[tuple[bytes, bytes], int] = {}
-        # TODO 6.1: record frequency of every pair
-        for token, freq in pre_tokenization.items():
-            for j in range(len(token) - 1):
-                pair = (token[j], token[j + 1])
-                pair_freq[pair] = pair_freq.get(pair, 0) + freq
 
-        # TODO 6.2: find the most frequent pair
+    # Repeat the merging process
+    for _ in range(vocab_size - 256 - len(special_tokens)):
+        # TODO 6.2: find the most frequent pair (with lexicographic tie-breaking)
         max_freq_pair: tuple[bytes, bytes] | None = None
         max_freq = 0
         for pair, freq in pair_freq.items():
@@ -90,17 +90,34 @@ def train_bpe(
         merges.append(max_freq_pair)
 
         # TODO 6.4: add the merged pair to vocab
-        vocab[len(vocab)] = max_freq_pair[0] + max_freq_pair[1]
-
-        # TODO 6.5: update pre-tokenization result by replacing merged pairs
-        new_pre_tokenization: dict[tuple[bytes, ...], int] = {}
         merged_token = max_freq_pair[0] + max_freq_pair[1]
+        vocab[len(vocab)] = merged_token
+
+        # TODO 6.5: update pre-tokenization and pair_freq incrementally
+        # For affected tokens: compute old pairs, build new token, compute new pairs, diff
+        tokens_to_delete: list[tuple[bytes, ...]] = []
+        tokens_to_add: dict[tuple[bytes, ...], int] = {}
+
         for token, freq in pre_tokenization.items():
-            # Skip merge logic if pair can't exist in this token
+            # Quick check: skip if pair can't exist in this token
             if max_freq_pair[0] not in token or max_freq_pair[1] not in token:
-                new_pre_tokenization[token] = new_pre_tokenization.get(token, 0) + freq
                 continue
-            # Replace all occurrences of the merged pair
+
+            # Check if the pair actually exists (adjacent) in this token
+            has_pair = any(
+                (token[j], token[j + 1]) == max_freq_pair
+                for j in range(len(token) - 1)
+            )
+            if not has_pair:
+                continue
+
+            # Compute old pairs for this token
+            old_pairs: dict[tuple[bytes, bytes], int] = {}
+            for k in range(len(token) - 1):
+                pair = (token[k], token[k + 1])
+                old_pairs[pair] = old_pairs.get(pair, 0) + 1
+
+            # Build new token by merging
             new_token: list[bytes] = []
             j = 0
             while j < len(token):
@@ -111,8 +128,31 @@ def train_bpe(
                     new_token.append(token[j])
                     j += 1
             new_key = tuple(new_token)
-            new_pre_tokenization[new_key] = new_pre_tokenization.get(new_key, 0) + freq
-        pre_tokenization = new_pre_tokenization
+
+            # Compute new pairs for the merged token
+            new_pairs: dict[tuple[bytes, bytes], int] = {}
+            for k in range(len(new_key) - 1):
+                pair = (new_key[k], new_key[k + 1])
+                new_pairs[pair] = new_pairs.get(pair, 0) + 1
+
+            # Update pair_freq: subtract old pairs, add new pairs
+            for pair, count in old_pairs.items():
+                pair_freq[pair] -= count * freq
+            for pair, count in new_pairs.items():
+                pair_freq[pair] = pair_freq.get(pair, 0) + count * freq
+
+            # Mark for update in pre_tokenization
+            tokens_to_delete.append(token)
+            tokens_to_add[new_key] = tokens_to_add.get(new_key, 0) + freq
+
+        # Apply changes to pre_tokenization
+        for token in tokens_to_delete:
+            del pre_tokenization[token]
+        for token, freq in tokens_to_add.items():
+            pre_tokenization[token] = pre_tokenization.get(token, 0) + freq
+
+        # Clean up zero or negative counts from pair_freq
+        pair_freq = {k: v for k, v in pair_freq.items() if v > 0}
 
 
     # TODO: Return the final vocabulary and merges list
