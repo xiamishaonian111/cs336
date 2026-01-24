@@ -1,11 +1,10 @@
-"""Train BPE tokenizer on TinyStories dataset."""
+"""Train BPE tokenizer on TinyStories or OpenWebText dataset."""
 
+import argparse
 import json
 import time
 import psutil
 import os
-import cProfile
-import pstats
 from pathlib import Path
 
 from tokenizer import train_bpe
@@ -18,20 +17,54 @@ def get_memory_usage_gb():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Train BPE tokenizer")
+    parser.add_argument(
+        "--dataset",
+        choices=["tinystories", "owt"],
+        required=True,
+        help="Dataset to train on: tinystories or owt (OpenWebText)"
+    )
+    parser.add_argument(
+        "--vocab-size",
+        type=int,
+        default=None,
+        help="Vocabulary size (default: 10000 for tinystories, 32000 for owt)"
+    )
+    parser.add_argument(
+        "--no-multiprocessing",
+        action="store_true",
+        help="Disable multiprocessing"
+    )
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help="Enable cProfile profiling"
+    )
+    args = parser.parse_args()
+
     # Paths
     data_dir = Path(__file__).parent.parent / "data"
-    input_path = data_dir / "TinyStoriesV2-GPT4-train.txt"  # Full training dataset
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
 
-    # Training parameters
-    vocab_size = 10000  # Minimal merges to isolate pre-tokenization time
+    # Dataset-specific configuration
+    if args.dataset == "tinystories":
+        input_path = data_dir / "TinyStoriesV2-GPT4-train.txt"
+        default_vocab_size = 10000
+        output_prefix = "tinystories"
+    else:  # owt
+        input_path = data_dir / "owt_train.txt"
+        default_vocab_size = 32000
+        output_prefix = "owt"
+
+    vocab_size = args.vocab_size if args.vocab_size else default_vocab_size
     special_tokens = ["<|endoftext|>"]
 
     print(f"Training BPE tokenizer on: {input_path}")
     print(f"Vocab size: {vocab_size}")
     print(f"Special tokens: {special_tokens}")
     print(f"File size: {input_path.stat().st_size / (1024**3):.2f} GB")
+    print(f"Multiprocessing: {not args.no_multiprocessing}")
     print()
 
     # Track memory and time
@@ -43,7 +76,7 @@ def main():
         input_path=input_path,
         vocab_size=vocab_size,
         special_tokens=special_tokens,
-        use_multiprocessing=True,
+        use_multiprocessing=not args.no_multiprocessing,
     )
 
     end_time = time.time()
@@ -55,7 +88,7 @@ def main():
     elapsed_hours = elapsed_time / 3600
     memory_used = peak_memory - initial_memory
 
-    print(f"Training completed!")
+    print(f"\nTraining completed!")
     print(f"Time: {elapsed_time:.2f} seconds ({elapsed_minutes:.2f} minutes, {elapsed_hours:.4f} hours)")
     print(f"Memory usage: {peak_memory:.2f} GB (delta: {memory_used:.2f} GB)")
     print(f"Vocabulary size: {len(vocab)}")
@@ -79,20 +112,20 @@ def main():
 
     # Serialize vocab to JSON (convert bytes to hex strings for JSON compatibility)
     vocab_json = {str(k): v.hex() for k, v in vocab.items()}
-    vocab_path = output_dir / "tinystories_vocab.json"
+    vocab_path = output_dir / f"{output_prefix}_vocab.json"
     with open(vocab_path, "w") as f:
         json.dump(vocab_json, f, indent=2)
     print(f"Saved vocabulary to: {vocab_path}")
 
     # Serialize merges (as list of hex string pairs)
     merges_json = [[m[0].hex(), m[1].hex()] for m in merges]
-    merges_path = output_dir / "tinystories_merges.json"
+    merges_path = output_dir / f"{output_prefix}_merges.json"
     with open(merges_path, "w") as f:
         json.dump(merges_json, f, indent=2)
     print(f"Saved merges to: {merges_path}")
 
     # Also save a human-readable version of the vocab
-    vocab_readable_path = output_dir / "tinystories_vocab_readable.txt"
+    vocab_readable_path = output_dir / f"{output_prefix}_vocab_readable.txt"
     with open(vocab_readable_path, "w", encoding="utf-8") as f:
         for token_id in sorted(vocab.keys()):
             token_bytes = vocab[token_id]
@@ -105,22 +138,30 @@ def main():
 
 
 if __name__ == "__main__":
-    # Profile the training
-    profiler = cProfile.Profile()
-    profiler.enable()
+    import sys
 
-    main()
+    # Check if profiling is requested
+    if "--profile" in sys.argv:
+        import cProfile
+        import pstats
 
-    profiler.disable()
+        # Remove --profile from args before parsing
+        sys.argv.remove("--profile")
 
-    # Print profiling results
-    print("\n" + "="*80)
-    print("PROFILING RESULTS (top 30 by cumulative time)")
-    print("="*80)
-    stats = pstats.Stats(profiler)
-    stats.strip_dirs().sort_stats('cumulative').print_stats(30)
+        profiler = cProfile.Profile()
+        profiler.enable()
+        main()
+        profiler.disable()
 
-    print("\n" + "="*80)
-    print("PROFILING RESULTS (top 30 by total time)")
-    print("="*80)
-    stats.strip_dirs().sort_stats('tottime').print_stats(30)
+        print("\n" + "="*80)
+        print("PROFILING RESULTS (top 30 by cumulative time)")
+        print("="*80)
+        stats = pstats.Stats(profiler)
+        stats.strip_dirs().sort_stats('cumulative').print_stats(30)
+
+        print("\n" + "="*80)
+        print("PROFILING RESULTS (top 30 by total time)")
+        print("="*80)
+        stats.strip_dirs().sort_stats('tottime').print_stats(30)
+    else:
+        main()
