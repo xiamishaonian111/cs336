@@ -25,7 +25,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
 
     # Training parameters
-    vocab_size = 260  # Minimal merges to isolate pre-tokenization time
+    vocab_size = 10000  # Minimal merges to isolate pre-tokenization time
     special_tokens = ["<|endoftext|>"]
 
     print(f"Training BPE tokenizer on: {input_path}")
