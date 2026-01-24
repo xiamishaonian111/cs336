@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import regex
@@ -99,8 +100,16 @@ def train_bpe(
 
         # Find chunk boundaries for parallel processing
         num_processes = num_workers if num_workers else multiprocessing.cpu_count()
+
+        # Calculate number of chunks based on max chunk size (256 MB), not worker count
+        # Workers will process chunks in streaming fashion via imap_unordered
+        max_chunk_size = 256 * 1024 * 1024  # 256 MB
         with open(input_path, "rb") as f:
-            boundaries = find_chunk_boundaries(f, num_processes, split_special_token)
+            file_size = f.seek(0, os.SEEK_END)
+        num_chunks = max(1, math.ceil(file_size / max_chunk_size))
+
+        with open(input_path, "rb") as f:
+            boundaries = find_chunk_boundaries(f, num_chunks, split_special_token)
 
         # Create chunk ranges for parallel processing
         chunk_ranges = [(boundaries[i], boundaries[i + 1]) for i in range(len(boundaries) - 1)]
