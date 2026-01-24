@@ -25,6 +25,12 @@ def main():
         help="Dataset to train on: tinystories or owt (OpenWebText)"
     )
     parser.add_argument(
+        "--split",
+        choices=["train", "valid"],
+        default="train",
+        help="Dataset split to use (default: train)"
+    )
+    parser.add_argument(
         "--vocab-size",
         type=int,
         default=None,
@@ -49,18 +55,19 @@ def main():
 
     # Dataset-specific configuration
     if args.dataset == "tinystories":
-        input_path = data_dir / "TinyStoriesV2-GPT4-train.txt"
+        input_path = data_dir / f"TinyStoriesV2-GPT4-{args.split}.txt"
         default_vocab_size = 10000
-        output_prefix = "tinystories"
+        output_prefix = f"tinystories_{args.split}"
     else:  # owt
-        input_path = data_dir / "owt_train.txt"
+        input_path = data_dir / f"owt_{args.split}.txt"
         default_vocab_size = 32000
-        output_prefix = "owt"
+        output_prefix = f"owt_{args.split}"
 
     vocab_size = args.vocab_size if args.vocab_size else default_vocab_size
     special_tokens = ["<|endoftext|>"]
 
     print(f"Training BPE tokenizer on: {input_path}")
+    print(f"Dataset: {args.dataset}, Split: {args.split}")
     print(f"Vocab size: {vocab_size}")
     print(f"Special tokens: {special_tokens}")
     print(f"File size: {input_path.stat().st_size / (1024**3):.2f} GB")
