@@ -42,6 +42,12 @@ def main():
         help="Disable multiprocessing"
     )
     parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="Number of worker processes (default: CPU count)"
+    )
+    parser.add_argument(
         "--profile",
         action="store_true",
         help="Enable cProfile profiling"
@@ -72,6 +78,10 @@ def main():
     print(f"Special tokens: {special_tokens}")
     print(f"File size: {input_path.stat().st_size / (1024**3):.2f} GB")
     print(f"Multiprocessing: {not args.no_multiprocessing}")
+    if not args.no_multiprocessing:
+        import multiprocessing
+        workers = args.num_workers if args.num_workers else multiprocessing.cpu_count()
+        print(f"Number of workers: {workers}")
     print()
 
     # Track memory and time
@@ -84,6 +94,7 @@ def main():
         vocab_size=vocab_size,
         special_tokens=special_tokens,
         use_multiprocessing=not args.no_multiprocessing,
+        num_workers=args.num_workers,
     )
 
     end_time = time.time()

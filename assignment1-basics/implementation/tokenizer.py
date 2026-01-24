@@ -69,6 +69,7 @@ def train_bpe(
     vocab_size: int,
     special_tokens: list[str],
     use_multiprocessing: bool = True,
+    num_workers: int | None = None,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     """
     Train a byte-level BPE tokenizer.
@@ -97,7 +98,7 @@ def train_bpe(
         split_special_token = special_tokens[0].encode("utf-8") if special_tokens else b"<|endoftext|>"
 
         # Find chunk boundaries for parallel processing
-        num_processes = multiprocessing.cpu_count()
+        num_processes = num_workers if num_workers else multiprocessing.cpu_count()
         with open(input_path, "rb") as f:
             boundaries = find_chunk_boundaries(f, num_processes, split_special_token)
 
@@ -107,20 +108,15 @@ def train_bpe(
         # Parallel pre-tokenization
         worker_fn = partial(_pretokenize_chunk, input_path=input_path, special_token_pattern=special_token_pattern)
 
+        # Incrementally merge results as each worker completes (memory-efficient)
+        pre_tokenization: dict[tuple[bytes, ...], int] = {}
         with multiprocessing.Pool(processes=num_processes) as pool:
-            results = pool.map(worker_fn, chunk_ranges)
+            for result in pool.imap_unordered(worker_fn, chunk_ranges):
+                for token_tuple, count in result.items():
+                    pre_tokenization[token_tuple] = pre_tokenization.get(token_tuple, 0) + count
 
         t1 = time.time()
-        print(f"[TIMING] Pool.map completed: {t1 - t0:.2f}s")
-
-        # Merge results from all processes
-        pre_tokenization: dict[tuple[bytes, ...], int] = {}
-        for result in results:
-            for token_tuple, count in result.items():
-                pre_tokenization[token_tuple] = pre_tokenization.get(token_tuple, 0) + count
-        t2 = time.time()
-        print(f"[TIMING] Merge results: {t2 - t1:.2f}s")
-        print(f"[TIMING] Total pre-tokenization: {t2 - t0:.2f}s")
+        print(f"[TIMING] Pre-tokenization completed: {t1 - t0:.2f}s")
         print(f"[TIMING] Unique tokens: {len(pre_tokenization)}")
     else:
         # Single-process pre-tokenization
