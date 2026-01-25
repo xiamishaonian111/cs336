@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import random
 import time
 from pathlib import Path
 
@@ -40,34 +39,47 @@ def load_tokenizer_from_hex_files(
     return Tokenizer(vocab, merges, special_tokens)
 
 
-def sample_documents(filepath: str, num_docs: int, separator: str = "<|endoftext|>", seed: int = 42) -> list[str]:
+def sample_documents(filepath: str, num_docs: int, separator: str = "<|endoftext|>") -> list[str]:
     """
-    Sample random documents from a text file.
+    Read the first N documents from a text file (memory-efficient streaming).
 
     Args:
         filepath: Path to the text file
-        num_docs: Number of documents to sample
+        num_docs: Number of documents to read
         separator: Document separator string
-        seed: Random seed for reproducibility
 
     Returns:
-        List of sampled document strings
+        List of document strings
     """
-    random.seed(seed)
+    documents = []
+    current_doc = []
 
     with open(filepath, "r", encoding="utf-8") as f:
-        content = f.read()
+        for line in f:
+            # Check if separator is in this line
+            while separator in line:
+                # Split on first occurrence of separator
+                before, line = line.split(separator, 1)
+                current_doc.append(before)
 
-    # Split into documents
-    documents = content.split(separator)
-    # Remove empty documents and strip whitespace
-    documents = [doc.strip() for doc in documents if doc.strip()]
+                # Complete the current document
+                doc_text = "".join(current_doc).strip()
+                if doc_text:
+                    documents.append(doc_text)
+                    if len(documents) >= num_docs:
+                        return documents
+                current_doc = []
 
-    # Sample documents
-    if len(documents) <= num_docs:
-        return documents
+            # Add remaining part of line to current document
+            current_doc.append(line)
 
-    return random.sample(documents, num_docs)
+    # Handle last document if file doesn't end with separator
+    if current_doc and len(documents) < num_docs:
+        doc_text = "".join(current_doc).strip()
+        if doc_text:
+            documents.append(doc_text)
+
+    return documents
 
 
 def calculate_compression_ratio(tokenizer: Tokenizer, documents: list[str]) -> dict:
@@ -135,7 +147,7 @@ def experiment1_compression_ratio(args, data_dir: Path, output_dir: Path):
 
     special_tokens = ["<|endoftext|>"]
 
-    print(f"Sampling {args.num_docs} documents from each dataset (seed={args.seed})")
+    print(f"Reading first {args.num_docs} documents from each dataset")
 
     for dataset_name, config in datasets.items():
         print(f"\n{dataset_name} (vocab size: {config['vocab_size']})")
@@ -149,14 +161,13 @@ def experiment1_compression_ratio(args, data_dir: Path, output_dir: Path):
         )
         print(f"Loaded tokenizer with {len(tokenizer.vocab)} tokens")
 
-        # Sample documents
+        # Read first N documents
         documents = sample_documents(
             str(config["data_path"]),
             args.num_docs,
             separator="<|endoftext|>",
-            seed=args.seed,
         )
-        print(f"Sampled {len(documents)} documents")
+        print(f"Loaded {len(documents)} documents")
 
         # Calculate compression ratio
         stats = calculate_compression_ratio(tokenizer, documents)
@@ -195,14 +206,13 @@ def experiment2_cross_tokenizer(args, data_dir: Path, output_dir: Path):
         special_tokens,
     )
 
-    # Sample OpenWebText documents
+    # Read first N OpenWebText documents
     owt_documents = sample_documents(
         str(data_dir / "owt_train.txt"),
         args.num_docs,
         separator="<|endoftext|>",
-        seed=args.seed,
     )
-    print(f"Sampled {len(owt_documents)} OpenWebText documents")
+    print(f"Loaded {len(owt_documents)} OpenWebText documents")
 
     # Compare compression ratios
     print("\nOpenWebText with OpenWebText tokenizer (32K vocab):")
@@ -415,13 +425,7 @@ def main():
         "--num-docs",
         type=int,
         default=10,
-        help="Number of documents to sample (default: 10)"
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for sampling (default: 42)"
+        help="Number of documents to read (default: 10)"
     )
     parser.add_argument(
         "--throughput-sample-mb",
