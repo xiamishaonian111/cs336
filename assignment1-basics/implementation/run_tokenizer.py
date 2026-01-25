@@ -84,7 +84,7 @@ def sample_documents(filepath: str, num_docs: int, separator: str = "<|endoftext
 
 def calculate_compression_ratio(tokenizer: Tokenizer, documents: list[str]) -> dict:
     """
-    Calculate compression ratio for a list of documents.
+    Calculate overall compression ratio for a list of documents.
 
     Args:
         tokenizer: Tokenizer to use for encoding
@@ -95,28 +95,15 @@ def calculate_compression_ratio(tokenizer: Tokenizer, documents: list[str]) -> d
     """
     total_bytes = 0
     total_tokens = 0
-    per_doc_ratios = []
 
     for doc in documents:
-        # Calculate bytes (UTF-8 encoding)
-        doc_bytes = len(doc.encode("utf-8"))
-
-        # Encode to tokens
-        token_ids = tokenizer.encode(doc)
-        doc_tokens = len(token_ids)
-
-        total_bytes += doc_bytes
-        total_tokens += doc_tokens
-
-        if doc_tokens > 0:
-            per_doc_ratios.append(doc_bytes / doc_tokens)
+        total_bytes += len(doc.encode("utf-8"))
+        total_tokens += len(tokenizer.encode(doc))
 
     return {
         "total_bytes": total_bytes,
         "total_tokens": total_tokens,
         "compression_ratio": total_bytes / total_tokens if total_tokens > 0 else 0,
-        "per_doc_ratios": per_doc_ratios,
-        "avg_doc_ratio": sum(per_doc_ratios) / len(per_doc_ratios) if per_doc_ratios else 0,
     }
 
 
@@ -172,15 +159,9 @@ def experiment1_compression_ratio(args, data_dir: Path, output_dir: Path):
         # Calculate compression ratio
         stats = calculate_compression_ratio(tokenizer, documents)
 
-        print(f"\nCompression Statistics:")
-        print(f"  Total bytes:        {stats['total_bytes']:,}")
-        print(f"  Total tokens:       {stats['total_tokens']:,}")
-        print(f"  Compression ratio:  {stats['compression_ratio']:.4f} bytes/token")
-        print(f"  Avg per-doc ratio:  {stats['avg_doc_ratio']:.4f} bytes/token")
-
-        print(f"\nPer-document ratios:")
-        for i, ratio in enumerate(stats["per_doc_ratios"]):
-            print(f"  Doc {i+1}: {ratio:.4f} bytes/token")
+        print(f"  Total bytes:   {stats['total_bytes']:,}")
+        print(f"  Total tokens:  {stats['total_tokens']:,}")
+        print(f"  Compression ratio: {stats['compression_ratio']:.4f} bytes/token")
 
 
 def experiment2_cross_tokenizer(args, data_dir: Path, output_dir: Path):
