@@ -108,13 +108,13 @@ def calculate_compression_ratio(tokenizer: Tokenizer, documents: list[str]) -> d
     }
 
 
-def task1_compression_ratio(args, data_dir: Path, output_dir: Path):
+def experiment1_compression_ratio(args, data_dir: Path, output_dir: Path):
     """
-    Task 1: Sample 10 documents from TinyStories and OpenWebText.
+    Experiment 1: Sample 10 documents from TinyStories and OpenWebText.
     Calculate compression ratio (bytes/token) for each tokenizer.
     """
     print("=" * 70)
-    print("Task 1: Compression Ratio Analysis")
+    print("Experiment 1: Compression Ratio Analysis")
     print("=" * 70)
 
     # Dataset configurations
@@ -172,13 +172,13 @@ def task1_compression_ratio(args, data_dir: Path, output_dir: Path):
             print(f"  Doc {i+1}: {ratio:.4f} bytes/token")
 
 
-def task2_cross_tokenizer(args, data_dir: Path, output_dir: Path):
+def experiment2_cross_tokenizer(args, data_dir: Path, output_dir: Path):
     """
-    Task 2: Tokenize OpenWebText sample with TinyStories tokenizer.
+    Experiment 2: Tokenize OpenWebText sample with TinyStories tokenizer.
     Compare compression ratios.
     """
     print("=" * 70)
-    print("Task 2: Cross-Tokenizer Analysis (OWT with TinyStories tokenizer)")
+    print("Experiment 2: Cross-Tokenizer Analysis (OWT with TinyStories tokenizer)")
     print("=" * 70)
 
     special_tokens = ["<|endoftext|>"]
@@ -242,13 +242,13 @@ def task2_cross_tokenizer(args, data_dir: Path, output_dir: Path):
     print(f"  {ts_decoded}")
 
 
-def task3_throughput(args, data_dir: Path, output_dir: Path):
+def experiment3_throughput(args, data_dir: Path, output_dir: Path):
     """
-    Task 3: Estimate tokenizer throughput (bytes/second).
+    Experiment 3: Estimate tokenizer throughput (bytes/second).
     Estimate time to tokenize the Pile dataset (825GB).
     """
     print("=" * 70)
-    print("Task 3: Throughput Estimation")
+    print("Experiment 3: Throughput Estimation")
     print("=" * 70)
 
     special_tokens = ["<|endoftext|>"]
@@ -311,12 +311,12 @@ def task3_throughput(args, data_dir: Path, output_dir: Path):
         print(f"    {pile_time_days:.2f} days")
 
 
-def task4_encode_datasets(args, data_dir: Path, output_dir: Path):
+def experiment4_encode_datasets(args, data_dir: Path, output_dir: Path):
     """
-    Task 4: Encode training and validation datasets into NumPy arrays (uint16).
+    Experiment 4: Encode training and validation datasets into NumPy arrays (uint16).
     """
     print("=" * 70)
-    print("Task 4: Encode Datasets to NumPy Arrays")
+    print("Experiment 4: Encode Datasets to NumPy Arrays")
     print("=" * 70)
 
     special_tokens = ["<|endoftext|>"]
@@ -405,11 +405,11 @@ def task4_encode_datasets(args, data_dir: Path, output_dir: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run tokenizer tasks")
+    parser = argparse.ArgumentParser(description="Run tokenizer experiments")
     parser.add_argument(
-        "task",
-        choices=["task1", "task2", "task3", "task4", "all"],
-        help="Which task to run"
+        "experiment",
+        choices=["experiment1", "experiment2", "experiment3", "experiment4", "all"],
+        help="Which experiment to run"
     )
     parser.add_argument(
         "--num-docs",
@@ -436,17 +436,17 @@ def main():
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
 
-    if args.task == "task1" or args.task == "all":
-        task1_compression_ratio(args, data_dir, output_dir)
+    if args.experiment == "experiment1" or args.experiment == "all":
+        experiment1_compression_ratio(args, data_dir, output_dir)
 
-    if args.task == "task2" or args.task == "all":
-        task2_cross_tokenizer(args, data_dir, output_dir)
+    if args.experiment == "experiment2" or args.experiment == "all":
+        experiment2_cross_tokenizer(args, data_dir, output_dir)
 
-    if args.task == "task3" or args.task == "all":
-        task3_throughput(args, data_dir, output_dir)
+    if args.experiment == "experiment3" or args.experiment == "all":
+        experiment3_throughput(args, data_dir, output_dir)
 
-    if args.task == "task4" or args.task == "all":
-        task4_encode_datasets(args, data_dir, output_dir)
+    if args.experiment == "experiment4" or args.experiment == "all":
+        experiment4_encode_datasets(args, data_dir, output_dir)
 
     print("\n" + "=" * 70)
     print("Done!")
