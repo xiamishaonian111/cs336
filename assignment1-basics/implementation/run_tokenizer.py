@@ -372,27 +372,45 @@ def experiment4_encode_datasets(args, data_dir: Path, output_dir: Path):
             file_size_gb = data_path.stat().st_size / (1024**3)
             print(f"  Input file: {data_path.name} ({file_size_gb:.2f} GB)")
 
-            # Encode using encode_iterable for memory efficiency
-            print(f"  Encoding...")
+            # Encode with incremental disk writes (memory-efficient)
+            print(f"  Encoding (writing to disk incrementally)...")
             start_time = time.time()
 
-            token_ids = []
-            with open(data_path, "r", encoding="utf-8") as f:
-                for token_id in tokenizer.encode_iterable(f):
-                    token_ids.append(token_id)
+            # Write tokens to raw binary file incrementally
+            output_path = output_dir / f"{name.lower()}_{split_name}_tokens.bin"
+            buffer = []
+            buffer_size = 1_000_000  # Flush every 1M tokens (~2MB)
+            total_tokens = 0
+
+            with open(output_path, "wb") as out_f:
+                with open(data_path, "r", encoding="utf-8") as in_f:
+                    for token_id in tokenizer.encode_iterable(in_f):
+                        buffer.append(token_id)
+                        if len(buffer) >= buffer_size:
+                            # Write buffer to disk
+                            arr = np.array(buffer, dtype=np.uint16)
+                            arr.tofile(out_f)
+                            total_tokens += len(buffer)
+                            buffer = []
+                            # Progress update
+                            if total_tokens % 100_000_000 == 0:
+                                print(f"    Progress: {total_tokens:,} tokens")
+
+                    # Write remaining buffer
+                    if buffer:
+                        arr = np.array(buffer, dtype=np.uint16)
+                        arr.tofile(out_f)
+                        total_tokens += len(buffer)
 
             elapsed = time.time() - start_time
             print(f"  Encoding time: {elapsed:.2f} seconds")
+            print(f"  Total tokens: {total_tokens:,}")
 
-            # Convert to NumPy array
-            token_array = np.array(token_ids, dtype=np.uint16)
-            print(f"  Total tokens: {len(token_array):,}")
-            print(f"  Array size: {token_array.nbytes / (1024**2):.2f} MB")
-
-            # Save to file
-            output_path = output_dir / f"{name.lower()}_{split_name}_tokens.npy"
-            np.save(output_path, token_array)
+            # Get file size
+            file_size_mb = output_path.stat().st_size / (1024**2)
+            print(f"  Output size: {file_size_mb:.2f} MB")
             print(f"  Saved to: {output_path}")
+            print(f"  Load with: np.fromfile('{output_path}', dtype=np.uint16)")
 
 
 def main():
