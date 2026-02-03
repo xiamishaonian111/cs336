@@ -313,7 +313,33 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    from implementation.transformer_block import TransformerBlock
+    from implementation.rope_module import RotaryPositionalEmbedding
+
+    block = TransformerBlock(d_model=d_model, num_heads=num_heads, d_ff=d_ff)
+
+    # Map test weight keys to our module's parameter names
+    key_map = {
+        "attn.q_proj.weight": "attn.q_proj.weight",
+        "attn.k_proj.weight": "attn.k_proj.weight",
+        "attn.v_proj.weight": "attn.v_proj.weight",
+        "attn.output_proj.weight": "attn.o_proj.weight",
+        "ln1.weight": "rms1.g",
+        "ln2.weight": "rms2.g",
+        "ffn.w1.weight": "ffn.w1.weights",
+        "ffn.w2.weight": "ffn.w2.weights",
+        "ffn.w3.weight": "ffn.w3.weights",
+    }
+    mapped_weights = {key_map[k]: v for k, v in weights.items()}
+    block.load_state_dict(mapped_weights)
+
+    rope = RotaryPositionalEmbedding(
+        theta=theta,
+        d_k=d_model // num_heads,
+        max_seq_len=max_seq_len,
+        device=in_features.device,
+    )
+    return block(in_features, rope=rope)
 
 
 def run_transformer_lm(
@@ -395,7 +421,37 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    from implementation.transformer_lm import TransformerLM
+
+    model = TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+    )
+
+    # Map test weight keys to our module's parameter names
+    mapped_weights = {}
+    for k, v in weights.items():
+        new_key = k
+        # Embedding and lm_head
+        new_key = new_key.replace("token_embeddings.weight", "token_embeddings.weights")
+        new_key = new_key.replace("lm_head.weight", "lm_head.weights")
+        new_key = new_key.replace("ln_final.weight", "ln_final.g")
+        # Per-layer mappings
+        new_key = new_key.replace("attn.output_proj.weight", "attn.o_proj.weight")
+        new_key = new_key.replace("ln1.weight", "rms1.g")
+        new_key = new_key.replace("ln2.weight", "rms2.g")
+        new_key = new_key.replace("ffn.w1.weight", "ffn.w1.weights")
+        new_key = new_key.replace("ffn.w2.weight", "ffn.w2.weights")
+        new_key = new_key.replace("ffn.w3.weight", "ffn.w3.weights")
+        mapped_weights[new_key] = v
+
+    model.load_state_dict(mapped_weights)
+    return model(in_indices)
 
 
 def run_rmsnorm(
