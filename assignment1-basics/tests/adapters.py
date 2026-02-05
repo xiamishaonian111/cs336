@@ -564,7 +564,9 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    from implementation.gradient_clipping import clip_gradient
+
+    clip_gradient(parameters, max_norm=max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
@@ -601,7 +603,15 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    from implementation.lr_schedule import get_lr_cosine_schedule
+
+    return get_lr_cosine_schedule(
+        t=it,
+        alpha_max=max_learning_rate,
+        alpha_min=min_learning_rate,
+        T_w=warmup_iters,
+        T_c=cosine_cycle_iters,
+    )
 
 
 def run_save_checkpoint(
