@@ -8,7 +8,7 @@ TRAIN_PATH="implementation/output/tinystories_train_tokens.bin"
 VAL_PATH="implementation/output/tinystories_valid_tokens.bin"
 BASE_DIR="experiments"
 
-LRS=("1e-4" "3e-4" "1e-3" "3e-3" "1e-2")
+LRS=("1e-4" "3e-4" "1e-3" "3e-3" "1e-2" "3e-2" "1e-1" "3e-1" "1")
 
 echo "========================================="
 echo "Starting LR sweep: ${LRS[*]}"
