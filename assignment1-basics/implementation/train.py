@@ -57,6 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val_interval", type=int, default=100)
     parser.add_argument("--val_batches", type=int, default=10)
     parser.add_argument("--checkpoint_interval", type=int, default=1000)
+    parser.add_argument("--overwrite_logs", action="store_true", help="Overwrite existing log files instead of appending")
 
     # Device
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
@@ -138,7 +139,7 @@ def main() -> None:
     # ---------- Experiment logger ----------
     logger = None
     if args.log_dir:
-        logger = ExperimentLogger(args.log_dir)
+        logger = ExperimentLogger(args.log_dir, overwrite=args.overwrite_logs)
         logger.start(config=vars(args))
 
     # ---------- Training loop ----------

@@ -24,15 +24,17 @@ class ExperimentLogger:
         entries = ExperimentLogger.load("experiments/run_01/metrics.jsonl")
     """
 
-    def __init__(self, log_dir: str) -> None:
+    def __init__(self, log_dir: str, overwrite: bool = False) -> None:
         """
         Args:
             log_dir: Directory to write log files into (created on start).
+            overwrite: If True, overwrite existing logs. If False, append.
         """
         self.log_dir = log_dir
         self.metrics_path = os.path.join(log_dir, "metrics.jsonl")
         self._file = None
         self._start_time = None
+        self._overwrite = overwrite
 
     def start(self, config: dict) -> None:
         """Create log directory, save config, open log file, start wallclock.
@@ -42,7 +44,7 @@ class ExperimentLogger:
                     ``config.json`` in log_dir.
         """
         os.makedirs(self.log_dir, exist_ok=True)
-        self._file = open(self.metrics_path, "a")
+        self._file = open(self.metrics_path, "w" if self._overwrite else "a")
         self._start_time = time.time()
 
         config_path = os.path.join(self.log_dir, "config.json")
