@@ -143,7 +143,7 @@ def main() -> None:
 
     # ---------- Training loop ----------
     model.train()
-    for step in range(start_iter, args.max_iters):
+    for step in range(start_iter + 1, args.max_iters + 1):
         t0 = time.time()
 
         # LR schedule
