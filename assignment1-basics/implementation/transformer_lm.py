@@ -34,6 +34,7 @@ class TransformerLM(nn.Module):
             rope_theta: float RoPE theta parameter.
         """
         super().__init__()
+        self.context_length = context_length
         self.token_embeddings = Embedding(vocab_size, d_model)
         self.layers = nn.ModuleList(
             [TransformerBlock(d_model, num_heads, d_ff) for _ in range(num_layers)]
