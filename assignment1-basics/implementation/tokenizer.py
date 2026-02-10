@@ -330,15 +330,15 @@ class Tokenizer:
         Returns:
             A Tokenizer instance constructed from the loaded vocabulary and merges.
         """
-        # Load vocab from JSON: {token_id (str): token_bytes (list of ints)}
+        # Load vocab from JSON: {token_id (str): hex_string}
         with open(vocab_filepath, "r") as f:
             vocab_data = json.load(f)
-        vocab = {int(k): bytes(v) for k, v in vocab_data.items()}
+        vocab = {int(k): bytes.fromhex(v) for k, v in vocab_data.items()}
 
-        # Load merges from JSON: list of [[bytes1], [bytes2]]
+        # Load merges from JSON: list of [hex1, hex2]
         with open(merges_filepath, "r") as f:
             merges_data = json.load(f)
-        merges = [(bytes(pair[0]), bytes(pair[1])) for pair in merges_data]
+        merges = [(bytes.fromhex(pair[0]), bytes.fromhex(pair[1])) for pair in merges_data]
 
         return cls(vocab, merges, special_tokens)
 

@@ -3,6 +3,7 @@
 import argparse
 import torch
 
+from implementation.checkpointing import load_checkpoint
 from implementation.tokenizer import Tokenizer
 from implementation.transformer_lm import TransformerLM
 from implementation.decode import decode
@@ -45,8 +46,7 @@ def main():
         rope_theta=args.rope_theta,
     ).to(args.device)
 
-    checkpoint = torch.load(args.checkpoint, weights_only=True)
-    model.load_state_dict(checkpoint["model"])
+    load_checkpoint(args.checkpoint, model)
     print(f"Loaded checkpoint from {args.checkpoint}")
 
     # Encode prompt

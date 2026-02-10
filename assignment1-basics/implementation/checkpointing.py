@@ -26,7 +26,7 @@ def save_checkpoint(
 def load_checkpoint(
     src: str | os.PathLike | BinaryIO | IO[bytes],
     model: torch.nn.Module,
-    optimizer: torch.optim.Optimizer,
+    optimizer: torch.optim.Optimizer | None = None,
 ) -> int:
     """
     Restore model and optimizer state from a checkpoint.
@@ -35,11 +35,13 @@ def load_checkpoint(
         src: Path or file-like object to load the checkpoint from.
         model: The model to restore state into (via load_state_dict).
         optimizer: The optimizer to restore state into (via load_state_dict).
+            If None, optimizer state is skipped.
 
     Returns:
         The iteration number that was saved in the checkpoint.
     """
     checkpoint = torch.load(src, weights_only=True)
     model.load_state_dict(checkpoint["model"])
-    optimizer.load_state_dict(checkpoint["optimizer"])
+    if optimizer is not None:
+        optimizer.load_state_dict(checkpoint["optimizer"])
     return checkpoint["iteration"]
