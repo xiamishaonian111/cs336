@@ -13,7 +13,7 @@ TOTAL_TOKENS=40960000
 CONTEXT_LENGTH=256
 LR="3e-3"
 
-BATCH_SIZES=(1 8 32 64 128)
+BATCH_SIZES=(1 2 4 8 16 32 64)
 
 echo "========================================="
 echo "Starting batch size sweep: ${BATCH_SIZES[*]}"
